@@ -1,1 +1,1 @@
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=ruby.testsecurity.AuthLibraryConfig
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=ruby.commonsecurity.AuthLibraryConfig

@@ -1,1 +1,1 @@
-rootProject.name = "test-security"
+rootProject.name = "ruby-security"

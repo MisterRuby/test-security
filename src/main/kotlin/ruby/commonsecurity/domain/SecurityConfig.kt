@@ -1,4 +1,4 @@
-package ruby.testsecurity.domain
+package ruby.commonsecurity.domain
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.servlet.http.HttpServletResponse
@@ -24,7 +24,6 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Service
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @Configuration
@@ -47,7 +46,7 @@ class SecurityConfig(
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.csrf { it.disable() }
             .authorizeHttpRequests { auth ->
-                auth.requestMatchers("/api/login").permitAll()
+                auth.requestMatchers("/login").permitAll()
                     .anyRequest().authenticated()
             }
             .formLogin { it.disable() } // 기본 로그인 폼 비활성화
@@ -106,7 +105,6 @@ class CustomUserDetailsService(
 }
 
 @RestController
-@RequestMapping("/api")
 class LoginController(
     private val authenticationManager: AuthenticationManager,
     private val successHandler: AuthenticationSuccessHandler,

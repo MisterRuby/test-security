@@ -1,4 +1,4 @@
-package ruby.testsecurity.domain
+package ruby.commonsecurity.domain
 
 import jakarta.persistence.*
 import org.springframework.data.jpa.repository.JpaRepository

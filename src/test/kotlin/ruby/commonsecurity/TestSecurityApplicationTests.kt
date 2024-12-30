@@ -1,4 +1,4 @@
-package ruby.testsecurity
+package ruby.commonsecurity
 
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -12,7 +12,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
-import ruby.testsecurity.domain.*
+import ruby.commonsecurity.domain.*
 
 @SpringBootTest(classes = [AuthLibraryConfig::class])
 @AutoConfigureMockMvc
@@ -63,7 +63,7 @@ class LoginTests {
         """.trimIndent()
 
         mockMvc.perform(
-            post("/api/login")
+            post("/login")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginRequest)
@@ -81,7 +81,7 @@ class LoginTests {
         """.trimIndent()
 
         mockMvc.perform(
-            post("/api/login")
+            post("/login")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginRequest)
@@ -99,7 +99,7 @@ class LoginTests {
         """.trimIndent()
 
         mockMvc.perform(
-            post("/api/login")
+            post("/login")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginRequest)
