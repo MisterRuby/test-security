@@ -1,0 +1,8 @@
+jwt:
+  access-token-expiration-ms: 1200000
+  refresh-token-expiration-ms: 604800000
+
+cors:
+  allowed-origins:
+    - http://www.test.com
+    - http://www.example.com

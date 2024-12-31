@@ -1,23 +1,26 @@
 package ruby.commonsecurity
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
+import org.springframework.mock.web.MockCookie
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 import ruby.commonsecurity.domain.*
-import ruby.commonsecurity.jwt.JwtUtils
+import ruby.commonsecurity.security.jwt.JwtUtils
 
 @RestController
 class TestController{
@@ -28,8 +31,7 @@ class TestController{
     }
 }
 
-//@SpringBootTest(classes = [AuthLibraryConfig::class])
-@SpringBootTest
+@SpringBootTest(classes = [AuthLibraryConfig::class])
 @AutoConfigureMockMvc
 @Transactional
 class LoginTests {
@@ -48,6 +50,9 @@ class LoginTests {
 
     @Autowired
     private lateinit var jwtUtils: JwtUtils
+
+    @Autowired
+    private lateinit var objectMapper: ObjectMapper
 
     @BeforeEach
     fun setUp() {
@@ -72,7 +77,7 @@ class LoginTests {
 
 
     @Test
-    fun `로그인 성공 테스트`() {
+    fun `로그인 성공 테스트1`() {
         val loginRequest = """
             {
                 "email": "approved_user@example.com",
@@ -83,14 +88,55 @@ class LoginTests {
         mockMvc.perform(
             post("/login")
                 .with(csrf())
+                .header(HttpHeaders.ORIGIN, "http://www.test.com")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginRequest)
         )
             .andExpect(status().isOk) // 200 상태 확인
-            .andExpect(header().exists("Authorization"))
+            .andExpect(jsonPath("$.email").value("approved_user@example.com"))
+            .andExpect(jsonPath("$.accessToken").exists())
+            .andExpect(cookie().exists("refreshToken"))
             .andDo { result ->
-                val authorization = result.response.getHeader("Authorization")
-                println("Authorization: $authorization") // 세션 ID 출력
+                val responseContent = result.response.contentAsString
+                val responseData: Map<String, String> = objectMapper.readValue(responseContent)
+                val accessToken = responseData["accessToken"] as String
+                val accessTokenMaxAge = responseData["accessTokenMaxAge"] as String
+                val refreshToken = result.response.cookies.firstOrNull { it.name == "refreshToken" }?.value
+
+                println("Access Token: $accessToken")
+                println("accessTokenMaxAge: $accessTokenMaxAge")
+                println("Refresh Token: $refreshToken")
+            }
+    }
+
+    @Test
+    fun `로그인 성공 테스트2`() {
+        val loginRequest = """
+            {
+                "email": "approved_user@example.com",
+                "password": "password123"
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            post("/login")
+                .with(csrf())
+                .header(HttpHeaders.ORIGIN, "http://www.example.com")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(loginRequest)
+        )
+            .andExpect(status().isOk) // 200 상태 확인
+            .andExpect(jsonPath("$.email").value("approved_user@example.com"))
+            .andExpect(jsonPath("$.accessToken").exists())
+            .andExpect(cookie().exists("refreshToken"))
+            .andDo { result ->
+                val responseContent = result.response.contentAsString
+                val responseData: Map<String, String> = objectMapper.readValue(responseContent)
+                val accessToken = responseData["accessToken"] as String
+                val refreshToken = result.response.cookies.firstOrNull { it.name == "refreshToken" }?.value
+
+                println("Access Token: $accessToken")
+                println("Refresh Token: $refreshToken")
             }
     }
 
@@ -105,6 +151,7 @@ class LoginTests {
 
         mockMvc.perform(
             post("/login")
+                .header(HttpHeaders.ORIGIN, "http://www.test.com")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginRequest)
@@ -124,6 +171,7 @@ class LoginTests {
         mockMvc.perform(
             post("/login")
                 .with(csrf())
+                .header(HttpHeaders.ORIGIN, "http://www.test.com")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginRequest)
         )
@@ -131,31 +179,79 @@ class LoginTests {
     }
 
     @Test
-    fun `인증 요청 - JWT`() {
-        val jwt = jwtUtils.generateAccessToken("approved_user@example.com")
+    fun `로그인 실패 - 허용하지 않는 ORIGIN`() {
+        val loginRequest = """
+            {
+                "email": "approved_user@example.com",
+                "password": "password123"
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            post("/login")
+                .with(csrf())
+                .header(HttpHeaders.ORIGIN, "http://www.test1.com")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(loginRequest)
+        )
+            .andExpect(status().isForbidden) // 403 상태 확인
+    }
+
+
+    @Test
+    fun `인증 요청 성공`() {
+        val accessToken = jwtUtils.generateAccessToken("approved_user@example.com")
 
         mockMvc.perform(
             get("/test")
-                .header("Authorization", "Bearer $jwt") // JWT 포함
+                .header(HttpHeaders.ORIGIN, "http://www.test.com")
+                .header("Authorization", "Bearer $accessToken") // JWT 포함
         )
             .andExpect(status().isOk)
-            .andExpect(header().exists("Authorization"))
+    }
+
+    @Test
+    fun `인증 요청 실패 - 잘못된 AccessToken`() {
+        // 잘못된 accessToken
+        val accessToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhcHByb3ZlZF91c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNzM1NTk0NTM4LCJleHAiOjE3MzU2ODA5Mzh9.25ZHRNLbDvGXrcAQPRsQRS7Il8w8nsQCFn8wZOAMdSE"
+
+        mockMvc.perform(
+            get("/test")
+                .header("Authorization", "Bearer $accessToken") // JWT 포함
+        )
+            .andExpect(status().isForbidden)
+    }
+
+
+    @Test
+    fun `AccessToken 재발급 성공`() {
+        val refreshToken = jwtUtils.generateRefreshToken("approved_user@example.com")
+
+        mockMvc.perform(
+            post("/refresh-token")
+                .header(HttpHeaders.ORIGIN, "http://www.test.com")
+                .cookie(MockCookie("refreshToken", refreshToken))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.accessToken").exists())
             .andDo { result ->
-                val authorization = result.response.getHeader("Authorization")
-                println("Before Authorization: $jwt") // 세션 ID 출력
-                println("Authorization: $authorization") // 세션 ID 출력
+                val responseContent = result.response.contentAsString
+                val responseData: Map<String, String> = objectMapper.readValue(responseContent)
+                val accessToken = responseData["accessToken"] as String
+
+                println("Access Token: $accessToken")
             }
     }
 
     @Test
-    fun `인증 요청 실패 - 가짜 JWT`() {
-        // 가짜 JWT 발급 (실제 테스트 시에는 로그인 후 JWT를 얻어야 함)
-        val jwt = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhcHByb3ZlZF91c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNzM1NTk0NTM4LCJleHAiOjE3MzU2ODA5Mzh9.25ZHRNLbDvGXrcAQPRsQRS7Il8w8nsQCFn8wZOAMdSE"
+    fun `AccessToken 재발급 실패 - 잘못된 refreshToken`() {
+        val refreshToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhcHByb3ZlZF91c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNzM1NTk0NTM4LCJleHAiOjE3MzU2ODA5Mzh9.25ZHRNLbDvGXrcAQPRsQRS7Il8w8nsQCFn8wZOAMdSE"
 
         mockMvc.perform(
-            get("/test")
-                .header("Authorization", "Bearer $jwt") // JWT 포함
+            post("/refresh-token")
+                .header(HttpHeaders.ORIGIN, "http://www.test.com")
+                .cookie(MockCookie("refreshToken", refreshToken))
         )
-            .andExpect(status().isForbidden)
+            .andExpect(status().isUnauthorized)
     }
 }
