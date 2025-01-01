@@ -4,38 +4,19 @@ import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys
 import jakarta.annotation.PostConstruct
-import jakarta.servlet.FilterChain
-import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.scheduling.annotation.Scheduled
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
-import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClientException
 import org.springframework.web.client.RestTemplate
-import org.springframework.web.filter.OncePerRequestFilter
-import ruby.commonsecurity.security.CustomUserDetailsService
 import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.interfaces.RSAPublicKey
 import java.util.*
-
-
-@Component
-@ConfigurationProperties(prefix = "jwt")
-class JwtProperties {
-    var accessTokenExpirationMs: Int = 15 * 60 * 1000 // 15분
-    var refreshTokenExpirationMs: Int = 7 * 24 * 60 * 60 * 1000 // 7일
-    var generateSchedule: String = "0 0 0 1 * *"
-    var keyPairPath: String = "/.well-known/jwks.json"
-    var resourceServersWebhook: List<String> = emptyList()
-}
 
 @Component
 class JwtUtils(
@@ -61,12 +42,12 @@ class JwtUtils(
         privateKey = keyPair.private // 서명용
         publicKey = keyPair.public // 검증용
 
-        jwtProperties.resourceServersWebhook.forEach { webhookUrl ->
-            triggerKeyRotationWebhook(webhookUrl, jwtProperties.keyPairPath)
+        jwtProperties.resourceServersUrls.forEach { url ->
+            updateResourceServerPublicKey(url)
         }
     }
 
-    fun triggerKeyRotationWebhook(webhookUrl: String, jwkPath: String): Boolean {
+    private fun updateResourceServerPublicKey(webhookUrl: String): Boolean {
         // 웹훅 요청 데이터 생성
         return try {
             val jwk = getJwk()
@@ -84,6 +65,19 @@ class JwtUtils(
         } catch (ex: RestClientException) {
             false
         }
+    }
+
+    private fun getJwk(): Jwk {
+        val publicKey = publicKey as RSAPublicKey
+
+        // JWK 형식의 JSON 데이터 반환
+        return Jwk(
+            kty = "RSA",
+            alg = "RS256", // 알고리즘
+            use = "sig", // 용도 (서명)
+            n = Base64.getUrlEncoder().encodeToString(publicKey.modulus.toByteArray()), // modulus
+            e = Base64.getUrlEncoder().encodeToString(publicKey.publicExponent.toByteArray()) // exponent
+        )
     }
 
     fun generateToken(email: String): String {
@@ -108,47 +102,15 @@ class JwtUtils(
         val claims = Jwts.parserBuilder().setSigningKey(publicKey).build().parseClaimsJws(token).body
         return claims.subject
     }
+}
 
-    fun getJwk(): Jwk {
-        val publicKey = publicKey as RSAPublicKey
-
-        // JWK 형식의 JSON 데이터 반환
-        return Jwk(
-            kty = "RSA",
-            alg = "RS256", // 알고리즘
-            use = "sig", // 용도 (서명)
-            n = Base64.getUrlEncoder().encodeToString(publicKey.modulus.toByteArray()), // modulus
-            e = Base64.getUrlEncoder().encodeToString(publicKey.publicExponent.toByteArray()) // exponent
-        )
-    }
+@Component
+@ConfigurationProperties(prefix = "jwt")
+class JwtProperties {
+    var accessTokenExpirationMs: Int = 15 * 60 * 1000 // 15분
+    var refreshTokenExpirationMs: Int = 7 * 24 * 60 * 60 * 1000 // 7일
+    var generateSchedule: String = "0 0 0 1 * *"
+    var resourceServersUrls: List<String> = emptyList()
 }
 
 data class Jwk(val kty: String, val alg: String, val use: String, val n: String, val e: String)
-
-@Component
-class JwtAuthenticationFilter(
-    private val jwtUtils: JwtUtils,
-    private val userDetailsService: CustomUserDetailsService
-) : OncePerRequestFilter() {
-
-    override fun doFilterInternal(
-        request: HttpServletRequest,
-        response: HttpServletResponse,
-        filterChain: FilterChain
-    ) {
-        val authHeader = request.getHeader("Authorization")
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            val jwt = authHeader.substring(7)
-            if (jwtUtils.validateToken(jwt)) {
-                val username = jwtUtils.getUsernameFromToken(jwt)
-                val userDetails = userDetailsService.loadUserByUsername(username)
-                val authToken = UsernamePasswordAuthenticationToken(
-                    userDetails, null, userDetails.authorities
-                )
-                authToken.details = WebAuthenticationDetailsSource().buildDetails(request)
-                SecurityContextHolder.getContext().authentication = authToken
-            }
-        }
-        filterChain.doFilter(request, response)
-    }
-}

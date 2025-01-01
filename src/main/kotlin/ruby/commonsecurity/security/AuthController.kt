@@ -10,7 +10,6 @@ import org.springframework.security.core.AuthenticationException
 import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
 import org.springframework.web.bind.annotation.*
-import ruby.commonsecurity.security.jwt.Jwk
 import ruby.commonsecurity.security.jwt.JwtUtils
 
 @RestController
@@ -51,12 +50,6 @@ class LoginController(
         val accessToken = jwtUtils.generateToken(username)
 
         return ResponseEntity.ok(mapOf("accessToken" to accessToken))
-    }
-
-    @GetMapping("/jwks")
-    fun getJwk(): Jwk {
-        // JWK 형식의 JSON 데이터 반환
-        return jwtUtils.getJwk()
     }
 }
 

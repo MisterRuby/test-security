@@ -21,9 +21,8 @@ jwt:
   access-token-expiration-ms: 1200000
   refresh-token-expiration-ms: 604800000
   generate-schedule: "0 0 0 1 * *"
-  key-pair-path: /jwks
-  resource-servers-webhook:
-    - http://localhost:8081/webhook/update-keys
+  resource-servers-urls:
+    - http://localhost:8081/jwt/update-keys
 
 cors:
   allowed-origins:

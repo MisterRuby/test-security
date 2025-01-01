@@ -8,12 +8,6 @@ import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
-@Component
-@ConfigurationProperties(prefix = "cors")
-class CorsProperties {
-    var allowedOrigins: List<String> = emptyList()
-}
-
 @Configuration
 class CorsConfig(private val corsProperties: CorsProperties) {
 
@@ -29,4 +23,10 @@ class CorsConfig(private val corsProperties: CorsProperties) {
         source.registerCorsConfiguration("/**", configuration) // 모든 경로에 적용
         return source
     }
+}
+
+@Component
+@ConfigurationProperties(prefix = "cors")
+class CorsProperties {
+    var allowedOrigins: List<String> = emptyList()
 }

@@ -1,15 +1,19 @@
 package ruby.commonsecurity.security.config
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import jakarta.servlet.FilterChain
 import jakarta.servlet.http.Cookie
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
 import org.springframework.security.authentication.AuthenticationManager
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -17,9 +21,12 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler
+import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
-import ruby.commonsecurity.security.jwt.JwtAuthenticationFilter
+import org.springframework.web.filter.OncePerRequestFilter
+import ruby.commonsecurity.security.CustomUserDetailsService
 import ruby.commonsecurity.security.jwt.JwtProperties
 import ruby.commonsecurity.security.jwt.JwtUtils
 
@@ -110,8 +117,36 @@ class SecurityConfig(
     }
 }
 
+@Component
+class JwtAuthenticationFilter(
+    private val jwtUtils: JwtUtils,
+    private val userDetailsService: CustomUserDetailsService
+) : OncePerRequestFilter() {
+
+    override fun doFilterInternal(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        filterChain: FilterChain
+    ) {
+        val authHeader = request.getHeader("Authorization")
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            val jwt = authHeader.substring(7)
+            if (jwtUtils.validateToken(jwt)) {
+                val username = jwtUtils.getUsernameFromToken(jwt)
+                val userDetails = userDetailsService.loadUserByUsername(username)
+                val authToken = UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.authorities
+                )
+                authToken.details = WebAuthenticationDetailsSource().buildDetails(request)
+                SecurityContextHolder.getContext().authentication = authToken
+            }
+        }
+        filterChain.doFilter(request, response)
+    }
+}
+
 @Configuration
-class RestTemplateConfig(){
+class RestTemplateConfig {
     @Bean
     fun restTemplate(builder: RestTemplateBuilder): RestTemplate {
         return builder.build()
