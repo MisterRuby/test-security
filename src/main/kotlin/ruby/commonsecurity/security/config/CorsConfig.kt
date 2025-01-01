@@ -11,7 +11,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @Component
 @ConfigurationProperties(prefix = "cors")
 class CorsProperties {
-    lateinit var allowedOrigins: List<String>
+    var allowedOrigins: List<String> = emptyList()
 }
 
 @Configuration
@@ -21,7 +21,7 @@ class CorsConfig(private val corsProperties: CorsProperties) {
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration()
         configuration.allowedOrigins = corsProperties.allowedOrigins // 허용할 도메인
-        configuration.allowedMethods = listOf("GET", "POST", "PUT", "DELETE") // 허용할 HTTP 메서드
+        configuration.allowedMethods = listOf("GET", "POST") // 허용할 HTTP 메서드
         configuration.allowedHeaders = listOf("*") // 허용할 헤더
         configuration.allowCredentials = true // 쿠키를 포함한 자격 증명 허용
 

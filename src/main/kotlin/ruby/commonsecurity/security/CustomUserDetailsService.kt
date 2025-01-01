@@ -2,12 +2,13 @@ package ruby.commonsecurity.security
 
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.stereotype.Service
-import ruby.commonsecurity.domain.AccountStatus
-import ruby.commonsecurity.domain.UserInfoRepository
+import ruby.commonsecurity.entity.AccountStatus
+import ruby.commonsecurity.entity.UserInfoRepository
 
 @Service
 class CustomUserDetailsService(
@@ -18,7 +19,7 @@ class CustomUserDetailsService(
         val user = userInfoRepository.findByEmail(username)
             ?: throw UsernameNotFoundException("User not found with email: $username")
 
-        return org.springframework.security.core.userdetails.User(
+        return User(
             user.email,
             user.password,
 //            listOf() // 권한은 필요에 따라 설정

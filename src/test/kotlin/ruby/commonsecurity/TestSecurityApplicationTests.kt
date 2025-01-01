@@ -19,7 +19,9 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
-import ruby.commonsecurity.domain.*
+import ruby.commonsecurity.entity.AccountStatus
+import ruby.commonsecurity.entity.UserInfo
+import ruby.commonsecurity.entity.UserInfoRepository
 import ruby.commonsecurity.security.jwt.JwtUtils
 
 @RestController
@@ -31,7 +33,7 @@ class TestController{
     }
 }
 
-@SpringBootTest(classes = [AuthLibraryConfig::class])
+@SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
 class LoginTests {
@@ -41,9 +43,6 @@ class LoginTests {
 
     @Autowired
     private lateinit var userInfoRepository: UserInfoRepository
-
-    @Autowired
-    private lateinit var companyRepository: CompanyRepository
 
     @Autowired
     private lateinit var passwordEncoder: PasswordEncoder
@@ -56,20 +55,11 @@ class LoginTests {
 
     @BeforeEach
     fun setUp() {
-        val company = companyRepository.save(
-            Company(
-                name = "Test Company",
-                registrationNumber = "123-45-67890",
-                address = "123 Test Street"
-            )
-        )
-
         userInfoRepository.save(
             UserInfo(
                 email = "approved_user@example.com",
                 password = passwordEncoder.encode("password123"),
                 name = "Test User",
-                company = company,
                 accountStatus = AccountStatus.APPROVED
             )
         )
@@ -78,39 +68,15 @@ class LoginTests {
 
     @Test
     fun `로그인 성공 테스트1`() {
-        val loginRequest = """
-            {
-                "email": "approved_user@example.com",
-                "password": "password123"
-            }
-        """.trimIndent()
-
-        mockMvc.perform(
-            post("/login")
-                .with(csrf())
-                .header(HttpHeaders.ORIGIN, "http://www.test.com")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(loginRequest)
-        )
-            .andExpect(status().isOk) // 200 상태 확인
-            .andExpect(jsonPath("$.email").value("approved_user@example.com"))
-            .andExpect(jsonPath("$.accessToken").exists())
-            .andExpect(cookie().exists("refreshToken"))
-            .andDo { result ->
-                val responseContent = result.response.contentAsString
-                val responseData: Map<String, String> = objectMapper.readValue(responseContent)
-                val accessToken = responseData["accessToken"] as String
-                val accessTokenMaxAge = responseData["accessTokenMaxAge"] as String
-                val refreshToken = result.response.cookies.firstOrNull { it.name == "refreshToken" }?.value
-
-                println("Access Token: $accessToken")
-                println("accessTokenMaxAge: $accessTokenMaxAge")
-                println("Refresh Token: $refreshToken")
-            }
+        testLoginSuccess("http://www.test.com")
     }
 
     @Test
     fun `로그인 성공 테스트2`() {
+        testLoginSuccess("http://www.example.com")
+    }
+
+    fun testLoginSuccess(origin: String) {
         val loginRequest = """
             {
                 "email": "approved_user@example.com",
@@ -121,7 +87,7 @@ class LoginTests {
         mockMvc.perform(
             post("/login")
                 .with(csrf())
-                .header(HttpHeaders.ORIGIN, "http://www.example.com")
+                .header(HttpHeaders.ORIGIN, origin)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginRequest)
         )
@@ -200,7 +166,7 @@ class LoginTests {
 
     @Test
     fun `인증 요청 성공`() {
-        val accessToken = jwtUtils.generateAccessToken("approved_user@example.com")
+        val accessToken = jwtUtils.generateToken("approved_user@example.com")
 
         mockMvc.perform(
             get("/test")
@@ -225,10 +191,10 @@ class LoginTests {
 
     @Test
     fun `AccessToken 재발급 성공`() {
-        val refreshToken = jwtUtils.generateRefreshToken("approved_user@example.com")
+        val refreshToken = jwtUtils.generateToken("approved_user@example.com")
 
         mockMvc.perform(
-            post("/refresh-token")
+            get("/refresh-token")
                 .header(HttpHeaders.ORIGIN, "http://www.test.com")
                 .cookie(MockCookie("refreshToken", refreshToken))
         )
@@ -248,7 +214,7 @@ class LoginTests {
         val refreshToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhcHByb3ZlZF91c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNzM1NTk0NTM4LCJleHAiOjE3MzU2ODA5Mzh9.25ZHRNLbDvGXrcAQPRsQRS7Il8w8nsQCFn8wZOAMdSE"
 
         mockMvc.perform(
-            post("/refresh-token")
+            get("/refresh-token")
                 .header(HttpHeaders.ORIGIN, "http://www.test.com")
                 .cookie(MockCookie("refreshToken", refreshToken))
         )

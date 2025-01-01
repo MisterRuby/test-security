@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    # h2-console 에서 jdbc:h2:~/testdb 로 최초 생성해주어야 한다.
+    url: jdbc:h2:tcp://localhost/~/testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 1000
+
+jwt:
+  access-token-expiration-ms: 1200000
+  refresh-token-expiration-ms: 604800000
+  generate-schedule: "0 0 0 1 * *"
+  key-pair-path: /jwks
+  resource-servers-webhook:
+    - http://localhost:8081/webhook/update-keys
+
+cors:
+  allowed-origins:
+    - http://localhost:8081

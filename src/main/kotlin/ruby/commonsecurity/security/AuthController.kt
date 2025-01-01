@@ -9,10 +9,8 @@ import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
-import org.springframework.web.bind.annotation.CookieValue
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
+import ruby.commonsecurity.security.jwt.Jwk
 import ruby.commonsecurity.security.jwt.JwtUtils
 
 @RestController
@@ -37,22 +35,28 @@ class LoginController(
         }
     }
 
-    @PostMapping("/refresh-token")
+    @GetMapping("/refresh-token")
     fun refreshToken(
         @CookieValue("refreshToken") refreshToken: String?, // 쿠키에서 리프레시 토큰 가져옴
         response: HttpServletResponse
     ): ResponseEntity<Map<String, String>> {
-        if (refreshToken == null || !jwtUtils.validateRefreshToken(refreshToken)) {
+        if (refreshToken == null || !jwtUtils.validateToken(refreshToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
                 mapOf("error" to "Invalid or expired refresh token")
             )
         }
 
         // 리프레시 토큰 검증 후 새 액세스 토큰 발급
-        val username = jwtUtils.getUsernameFromRefreshToken(refreshToken)
-        val accessToken = jwtUtils.generateAccessToken(username)
+        val username = jwtUtils.getUsernameFromToken(refreshToken)
+        val accessToken = jwtUtils.generateToken(username)
 
         return ResponseEntity.ok(mapOf("accessToken" to accessToken))
+    }
+
+    @GetMapping("/jwks")
+    fun getJwk(): Jwk {
+        // JWK 형식의 JSON 데이터 반환
+        return jwtUtils.getJwk()
     }
 }
 

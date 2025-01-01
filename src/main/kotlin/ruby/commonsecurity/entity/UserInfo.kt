@@ -1,4 +1,4 @@
-package ruby.commonsecurity.domain
+package ruby.commonsecurity.entity
 
 import jakarta.persistence.*
 import org.springframework.data.jpa.repository.JpaRepository
@@ -17,10 +17,6 @@ data class UserInfo(
 
     @Column(nullable = false)
     val name: String,
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id")
-    val company: Company,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
