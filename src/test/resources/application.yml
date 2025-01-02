@@ -3,6 +3,8 @@ jwt:
   refresh-token-expiration-ms: 604800000
 
 cors:
+  resource-servers:
+    - http://resource-server.com
   allowed-origins:
     - http://www.test.com
     - http://www.example.com

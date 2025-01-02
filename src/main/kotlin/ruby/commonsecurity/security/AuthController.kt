@@ -62,10 +62,11 @@ data class LoginRequest(
 
 
 @RestController
+@RequestMapping("/jwk")
 class JwtController(
     private val jwtUtils: JwtUtils
 ) {
-    @GetMapping("/jwk")
+    @GetMapping
     fun getJwk(): Jwk {
         return jwtUtils.getJwk()
     }

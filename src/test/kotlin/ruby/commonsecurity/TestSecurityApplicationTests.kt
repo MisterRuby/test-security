@@ -65,7 +65,6 @@ class LoginTests {
         )
     }
 
-
     @Test
     fun `로그인 성공 테스트1`() {
         testLoginSuccess("http://www.test.com")
@@ -219,5 +218,47 @@ class LoginTests {
                 .cookie(MockCookie("refreshToken", refreshToken))
         )
             .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun `jwk 요청 성공`() {
+        mockMvc.perform(
+            get("/jwk")
+                .header(HttpHeaders.ORIGIN, "http://resource-server.com")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.kty").exists())
+            .andExpect(jsonPath("$.alg").exists())
+            .andExpect(jsonPath("$.use").exists())
+            .andExpect(jsonPath("$.n").exists())
+            .andExpect(jsonPath("$.e").exists())
+            .andDo { result ->
+                val responseContent = result.response.contentAsString
+                val responseData: Map<String, String> = objectMapper.readValue(responseContent)
+
+                println("responseData: $responseData")
+            }
+    }
+
+    @Test
+    fun `jwk 요청 실패 - 허용되지 않은 ORIGIN 도메인`() {
+        mockMvc.perform(
+            get("/jwk")
+                .header(HttpHeaders.ORIGIN, "http://www.test.com")
+        )
+            .andExpect(status().isForbidden)
+    }
+
+
+    @Test
+    fun `jwk 요청 실패 - 인증된 사용자이지만 허용되지 않은 ORIGIN 도메인`() {
+        val accessToken = jwtUtils.generateToken("approved_user@example.com")
+
+        mockMvc.perform(
+            get("/jwk")
+                .header(HttpHeaders.ORIGIN, "http://www.test.com")
+                .header("Authorization", "Bearer $accessToken") // JWT 포함
+        )
+            .andExpect(status().isForbidden)
     }
 }
