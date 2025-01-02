@@ -50,11 +50,12 @@ class SecurityConfig(
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
-        http.csrf { it.disable() }
+        http
+            .csrf { it.disable() }
             .cors { it.configurationSource(corsConfig.corsConfigurationSource()) }
             .authorizeHttpRequests { auth ->
-                auth.requestMatchers(HttpMethod.POST, "/login").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/refresh-token", "/jwks").permitAll()
+                auth.requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/auth/refresh-token", "/jwk").permitAll()
                     .anyRequest().authenticated()
             }
             .formLogin { it.disable() } // 기본 로그인 폼 비활성화

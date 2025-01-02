@@ -10,14 +10,16 @@ import org.springframework.security.core.AuthenticationException
 import org.springframework.security.web.authentication.AuthenticationFailureHandler
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
 import org.springframework.web.bind.annotation.*
+import ruby.commonsecurity.security.jwt.Jwk
 import ruby.commonsecurity.security.jwt.JwtUtils
 
 @RestController
-class LoginController(
+@RequestMapping("/auth")
+class AuthController(
     private val authenticationManager: AuthenticationManager,
     private val successHandler: AuthenticationSuccessHandler,
     private val failureHandler: AuthenticationFailureHandler,
-    private val jwtUtils: JwtUtils
+    private val jwtUtils: JwtUtils,
 ) {
 
     @PostMapping("/login")
@@ -57,3 +59,14 @@ data class LoginRequest(
     val email: String,
     val password: String
 )
+
+
+@RestController
+class JwtController(
+    private val jwtUtils: JwtUtils
+) {
+    @GetMapping("/jwk")
+    fun getJwk(): Jwk {
+        return jwtUtils.getJwk()
+    }
+}

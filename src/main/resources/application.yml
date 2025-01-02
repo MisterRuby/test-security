@@ -25,5 +25,7 @@ jwt:
     - http://localhost:8081/jwt/update-keys
 
 cors:
-  allowed-origins:
+  resource-servers:
     - http://localhost:8081
+  allowed-origins:
+    - http://www.test.com

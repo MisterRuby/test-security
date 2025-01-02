@@ -85,7 +85,7 @@ class LoginTests {
         """.trimIndent()
 
         mockMvc.perform(
-            post("/login")
+            post("/auth/login")
                 .with(csrf())
                 .header(HttpHeaders.ORIGIN, origin)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -116,7 +116,7 @@ class LoginTests {
         """.trimIndent()
 
         mockMvc.perform(
-            post("/login")
+            post("/auth/login")
                 .header(HttpHeaders.ORIGIN, "http://www.test.com")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -135,7 +135,7 @@ class LoginTests {
         """.trimIndent()
 
         mockMvc.perform(
-            post("/login")
+            post("/auth/login")
                 .with(csrf())
                 .header(HttpHeaders.ORIGIN, "http://www.test.com")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -154,7 +154,7 @@ class LoginTests {
         """.trimIndent()
 
         mockMvc.perform(
-            post("/login")
+            post("/auth/login")
                 .with(csrf())
                 .header(HttpHeaders.ORIGIN, "http://www.test1.com")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -194,7 +194,7 @@ class LoginTests {
         val refreshToken = jwtUtils.generateToken("approved_user@example.com")
 
         mockMvc.perform(
-            get("/refresh-token")
+            get("/auth/refresh-token")
                 .header(HttpHeaders.ORIGIN, "http://www.test.com")
                 .cookie(MockCookie("refreshToken", refreshToken))
         )
@@ -214,7 +214,7 @@ class LoginTests {
         val refreshToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhcHByb3ZlZF91c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNzM1NTk0NTM4LCJleHAiOjE3MzU2ODA5Mzh9.25ZHRNLbDvGXrcAQPRsQRS7Il8w8nsQCFn8wZOAMdSE"
 
         mockMvc.perform(
-            get("/refresh-token")
+            get("/auth/refresh-token")
                 .header(HttpHeaders.ORIGIN, "http://www.test.com")
                 .cookie(MockCookie("refreshToken", refreshToken))
         )

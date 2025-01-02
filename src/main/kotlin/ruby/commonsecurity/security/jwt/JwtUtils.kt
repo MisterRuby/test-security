@@ -67,7 +67,7 @@ class JwtUtils(
         }
     }
 
-    private fun getJwk(): Jwk {
+    fun getJwk(): Jwk {
         val publicKey = publicKey as RSAPublicKey
 
         // JWK 형식의 JSON 데이터 반환
